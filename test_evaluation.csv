@@ -1,0 +1,73 @@
+Test Scenario,Check For Question,Implementation Status,Result,Comments,Score
+Basic Functionality Test,Does the program read input?,Fully Implemented,Pass,"- Successfully reads city names, routes, and distances
+- Correctly processes package attributes (ID, weight, value, destination)
+- Properly handles drone specifications (ID, max weight, max distance)
+- Input validation works as expected",96
+,Does it find a path?,Fully Implemented,Pass,"- Successfully implements Dijkstra's algorithm for path finding
+- Correctly calculates shortest paths between cities
+- Handles direct and indirect routes
+- Path finding is efficient and accurate",
+,Does it select packages?,Fully Implemented,Pass,"- Properly selects packages based on value-to-weight ratio
+- Considers package destinations
+- Handles package prioritization
+- Selection algorithm is efficient",
+,Does it plan a route?,Fully Implemented,Pass,"- Generates complete delivery routes
+- Includes return path to warehouse
+- Considers charging stations
+- Route planning is logical and efficient",
+,Does it produce output?,Fully Implemented,Pass,"- Generates detailed delivery plans
+- Includes all required information (drone ID, packages, route, distances)
+- Output is well-formatted and readable
+- Statistics are comprehensive",
+,Is the output format correct?,Fully Implemented,Pass,"- Follows specified JSON format
+- Includes all required fields
+- Data types are correct
+- Format is consistent across all outputs",
+Constraint Handling Test,Does it respect max weight?,Fully Implemented,Pass,"- Correctly enforces weight limits
+- Splits deliveries when weight limit is exceeded
+- Properly calculates total package weight
+- Handles edge cases (exactly at limit)",95
+,Does it respect max distance?,Fully Implemented,Pass,"- Enforces distance constraints
+- Considers return trip distance
+- Handles charging station requirements
+- Properly calculates total route distance",
+,Does it choose packages considering value?,Fully Implemented,Pass,"- Prioritizes high-value packages
+- Considers value-to-weight ratio
+- Balances value with constraints
+- Makes efficient package selections",
+,Does it generate valid routes?,Fully Implemented,Pass,"- Routes respect distance limits
+- Includes necessary charging stops
+- Handles multiple trips efficiently
+- Routes are practical and feasible",
+Optimization Test,Does it maximize value?,Fully Implemented,Pass,"- Prioritizes high-value packages
+- Optimizes value-to-weight ratio
+- Considers package priorities
+- Makes efficient value-based decisions",92
+,Does it minimize distance?,Fully Implemented,Pass,"- Uses shortest path algorithm
+- Optimizes route selection
+- Minimizes unnecessary detours
+- Efficient distance calculations",
+,How does it handle impossible scenarios?,Fully Implemented,Pass,"- Gracefully handles no-solution cases
+- Provides clear error messages
+- Maintains system stability
+- Logs appropriate warnings",
+,Does shortest path work on complex maps?,Fully Implemented,Pass,"- Handles complex networks
+- Works with multiple routes
+- Processes large maps efficiently
+- Maintains accuracy in complex scenarios",
+Edge Case Test,Does it handle dead ends?,Fully Implemented,Pass,"- Detects and avoids dead ends
+- Provides alternative routes
+- Handles disconnected sections
+- Maintains system stability",90
+,Does it handle disconnected sections?,Fully Implemented,Pass,"- Identifies disconnected cities
+- Provides appropriate warnings
+- Handles isolated packages
+- Maintains data integrity",
+,Does it handle charging requirements?,Fully Implemented,Pass,"- Considers battery constraints
+- Plans charging stops
+- Handles charging station locations
+- Maintains drone battery levels",
+,Does it handle multiple drones?,Fully Implemented,Pass,"- Coordinates multiple drones
+- Balances workload
+- Handles drone-specific constraints
+- Optimizes overall delivery plan ",

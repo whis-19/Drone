@@ -5,6 +5,82 @@ import plotly.graph_objects as go
 from models.package import Package
 from models.drone import Drone
 from delivery_planner import DeliveryPlanner
+import base64
+import io
+
+# Set page configuration
+st.set_page_config(
+    page_title="Drone Delivery System",
+    page_icon="🚁",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS
+st.markdown("""
+    <style>
+    .main {
+        padding: 2rem;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #4CAF50;
+        color: white;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    .stButton>button:hover {
+        background-color: #45a049;
+    }
+    .success-box {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    .error-box {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    .info-box {
+        background-color: #cce5ff;
+        color: #004085;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    .metric-card {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 0.5rem 0;
+        text-align: center;
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .metric-label {
+        font-size: 1rem;
+        color: #7f8c8d;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+def get_table_download_link(df, filename):
+    """Generate a download link for a dataframe."""
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download {filename}</a>'
+    return href
 
 def initialize_session_state():
     """Initialize session state variables if they don't exist."""
@@ -16,6 +92,34 @@ def initialize_session_state():
         st.session_state.packages = []
     if 'delivery_plans' not in st.session_state:
         st.session_state.delivery_plans = []
+
+def display_metrics(statistics):
+    """Display metrics in a visually appealing way."""
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+            <div class="metric-card">
+                <div class="metric-value">{}</div>
+                <div class="metric-label">Total Packages</div>
+            </div>
+        """.format(statistics['total_packages']), unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+            <div class="metric-card">
+                <div class="metric-value">${:.2f}</div>
+                <div class="metric-label">Total Value</div>
+            </div>
+        """.format(statistics['total_value']), unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+            <div class="metric-card">
+                <div class="metric-value">{:.2f}</div>
+                <div class="metric-label">Total Distance</div>
+            </div>
+        """.format(statistics['total_distance']), unsafe_allow_html=True)
 
 def plot_delivery_statistics(statistics):
     """Create plots for delivery statistics."""
@@ -34,6 +138,11 @@ def plot_delivery_statistics(statistics):
         color=list(metrics.values()),
         color_continuous_scale='Viridis'
     )
+    fig.update_layout(
+        template='plotly_white',
+        title_x=0.5,
+        title_font_size=20
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     # Create a pie chart for average metrics
@@ -47,6 +156,11 @@ def plot_delivery_statistics(statistics):
         values=list(avg_metrics.values()),
         names=list(avg_metrics.keys()),
         title='Average Metrics per Trip'
+    )
+    fig2.update_layout(
+        template='plotly_white',
+        title_x=0.5,
+        title_font_size=20
     )
     st.plotly_chart(fig2, use_container_width=True)
 
@@ -62,6 +176,11 @@ def plot_package_distribution(packages):
         title='Package Weight vs Value Distribution',
         labels={'Weight': 'Weight (kg)', 'Value': 'Value ($)'}
     )
+    fig.update_layout(
+        template='plotly_white',
+        title_x=0.5,
+        title_font_size=20
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     # Create a bar chart of packages by destination
@@ -71,6 +190,11 @@ def plot_package_distribution(packages):
         y=dest_counts.values,
         title='Packages by Destination',
         labels={'x': 'Destination', 'y': 'Number of Packages'}
+    )
+    fig2.update_layout(
+        template='plotly_white',
+        title_x=0.5,
+        title_font_size=20
     )
     st.plotly_chart(fig2, use_container_width=True)
 
@@ -106,7 +230,10 @@ def plot_route_network(planner):
         hovermode='closest',
         margin=dict(b=20,l=5,r=5,t=40),
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        template='plotly_white',
+        title_x=0.5,
+        title_font_size=20
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -114,18 +241,28 @@ def plot_route_network(planner):
 def add_city():
     """Add a new city to the delivery network."""
     st.subheader("Add New City")
-    col1, col2 = st.columns(2)
-    with col1:
-        city_name = st.text_input("City Name")
-    with col2:
-        has_charging = st.checkbox("Has Charging Station")
     
-    if st.button("Add City"):
-        if city_name:
-            st.session_state.planner.add_city(city_name, has_charging)
-            st.success(f"City {city_name} added successfully!")
-        else:
-            st.error("Please enter a city name")
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            city_name = st.text_input("City Name")
+        with col2:
+            has_charging = st.checkbox("Has Charging Station")
+        
+        if st.button("Add City"):
+            if city_name:
+                st.session_state.planner.add_city(city_name, has_charging)
+                st.markdown(f"""
+                    <div class="success-box">
+                        City {city_name} added successfully!
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                    <div class="error-box">
+                        Please enter a city name
+                    </div>
+                """, unsafe_allow_html=True)
     
     # Show network visualization
     if len(st.session_state.planner.cities) > 0:
@@ -137,20 +274,29 @@ def add_route():
     st.subheader("Add New Route")
     cities = list(st.session_state.planner.cities.keys())
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        city1 = st.selectbox("From City", cities)
-    with col2:
-        city2 = st.selectbox("To City", cities)
-    with col3:
-        distance = st.number_input("Distance", min_value=0.1, step=0.1)
-    
-    if st.button("Add Route"):
-        if city1 != city2:
-            st.session_state.planner.add_route(city1, city2, distance)
-            st.success(f"Route from {city1} to {city2} added successfully!")
-        else:
-            st.error("Please select different cities")
+    with st.container():
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            city1 = st.selectbox("From City", cities)
+        with col2:
+            city2 = st.selectbox("To City", cities)
+        with col3:
+            distance = st.number_input("Distance", min_value=0.1, step=0.1)
+        
+        if st.button("Add Route"):
+            if city1 != city2:
+                st.session_state.planner.add_route(city1, city2, distance)
+                st.markdown(f"""
+                    <div class="success-box">
+                        Route from {city1} to {city2} added successfully!
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                    <div class="error-box">
+                        Please select different cities
+                    </div>
+                """, unsafe_allow_html=True)
     
     # Show network visualization
     if len(st.session_state.planner.cities) > 0:
@@ -161,21 +307,30 @@ def manage_drones():
     """Add and manage drones."""
     st.subheader("Manage Drones")
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        drone_id = st.number_input("Drone ID", min_value=1, step=1)
-    with col2:
-        max_weight = st.number_input("Max Weight", min_value=0.1, step=0.1)
-    with col3:
-        max_distance = st.number_input("Max Distance", min_value=0.1, step=0.1)
-    
-    if st.button("Add Drone"):
-        try:
-            drone = Drone(drone_id, max_weight, max_distance)
-            st.session_state.drones.append(drone)
-            st.success(f"Drone {drone_id} added successfully!")
-        except ValueError as e:
-            st.error(str(e))
+    with st.container():
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            drone_id = st.number_input("Drone ID", min_value=1, step=1)
+        with col2:
+            max_weight = st.number_input("Max Weight", min_value=0.1, step=0.1)
+        with col3:
+            max_distance = st.number_input("Max Distance", min_value=0.1, step=0.1)
+        
+        if st.button("Add Drone"):
+            try:
+                drone = Drone(drone_id, max_weight, max_distance)
+                st.session_state.drones.append(drone)
+                st.markdown(f"""
+                    <div class="success-box">
+                        Drone {drone_id} added successfully!
+                    </div>
+                """, unsafe_allow_html=True)
+            except ValueError as e:
+                st.markdown(f"""
+                    <div class="error-box">
+                        {str(e)}
+                    </div>
+                """, unsafe_allow_html=True)
     
     # Display existing drones
     if st.session_state.drones:
@@ -189,7 +344,7 @@ def manage_drones():
             }
             for drone in st.session_state.drones
         ])
-        st.dataframe(drones_df)
+        st.dataframe(drones_df, use_container_width=True)
         
         # Create drone capability visualization
         fig = px.scatter(
@@ -201,29 +356,43 @@ def manage_drones():
             title='Drone Capabilities',
             labels={'Max Weight': 'Max Weight (kg)', 'Max Distance': 'Max Distance (km)'}
         )
+        fig.update_layout(
+            template='plotly_white',
+            title_x=0.5,
+            title_font_size=20
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 def manage_packages():
     """Add and manage packages."""
     st.subheader("Manage Packages")
     
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        package_id = st.number_input("Package ID", min_value=1, step=1)
-    with col2:
-        weight = st.number_input("Weight", min_value=0.1, step=0.1)
-    with col3:
-        value = st.number_input("Value", min_value=0.0, step=0.1)
-    with col4:
-        destination = st.selectbox("Destination", list(st.session_state.planner.cities.keys()))
-    
-    if st.button("Add Package"):
-        try:
-            package = Package(package_id, weight, value, destination)
-            st.session_state.packages.append(package)
-            st.success(f"Package {package_id} added successfully!")
-        except ValueError as e:
-            st.error(str(e))
+    with st.container():
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            package_id = st.number_input("Package ID", min_value=1, step=1)
+        with col2:
+            weight = st.number_input("Weight", min_value=0.1, step=0.1)
+        with col3:
+            value = st.number_input("Value", min_value=0.0, step=0.1)
+        with col4:
+            destination = st.selectbox("Destination", list(st.session_state.planner.cities.keys()))
+        
+        if st.button("Add Package"):
+            try:
+                package = Package(package_id, weight, value, destination)
+                st.session_state.packages.append(package)
+                st.markdown(f"""
+                    <div class="success-box">
+                        Package {package_id} added successfully!
+                    </div>
+                """, unsafe_allow_html=True)
+            except ValueError as e:
+                st.markdown(f"""
+                    <div class="error-box">
+                        {str(e)}
+                    </div>
+                """, unsafe_allow_html=True)
     
     # Display existing packages
     if st.session_state.packages:
@@ -238,7 +407,7 @@ def manage_packages():
             }
             for package in st.session_state.packages
         ])
-        st.dataframe(packages_df)
+        st.dataframe(packages_df, use_container_width=True)
         
         # Show package distribution plots
         st.subheader("Package Distribution")
@@ -249,7 +418,11 @@ def plan_deliveries():
     st.subheader("Plan Deliveries")
     
     if not st.session_state.drones or not st.session_state.packages:
-        st.warning("Please add at least one drone and one package first")
+        st.markdown("""
+            <div class="info-box">
+                Please add at least one drone and one package first
+            </div>
+        """, unsafe_allow_html=True)
         return
     
     if st.button("Plan Deliveries"):
@@ -260,48 +433,77 @@ def plan_deliveries():
             )
             
             if not st.session_state.delivery_plans:
-                st.warning("No feasible delivery plans found")
+                st.markdown("""
+                    <div class="info-box">
+                        No feasible delivery plans found
+                    </div>
+                """, unsafe_allow_html=True)
                 return
             
             # Display delivery plans
             for i, plan in enumerate(st.session_state.delivery_plans, 1):
-                st.write(f"### Delivery Plan {i}")
-                st.write(f"**Drone ID:** {plan['drone_id']}")
-                st.write("**Packages:**")
+                st.markdown(f"### Delivery Plan {i}")
+                st.markdown(f"**Drone ID:** {plan['drone_id']}")
+                st.markdown("**Packages:**")
                 for package in plan['packages']:
-                    st.write(f"- Package {package.id}: {package.weight}kg, ${package.value} to {package.destination}")
-                st.write(f"**Route:** {' → '.join(plan['route'])}")
-                st.write(f"**Total Distance:** {plan['total_distance']:.2f}")
-                st.write(f"**Total Value:** ${plan['total_value']:.2f}")
-                st.write("---")
+                    st.markdown(f"- Package {package.id}: {package.weight}kg, ${package.value} to {package.destination}")
+                st.markdown(f"**Route:** {' → '.join(plan['route'])}")
+                st.markdown(f"**Total Distance:** {plan['total_distance']:.2f}")
+                st.markdown(f"**Total Value:** ${plan['total_value']:.2f}")
+                st.markdown("---")
             
             # Display statistics
             statistics = st.session_state.planner.get_delivery_statistics(st.session_state.delivery_plans)
-            st.write("### Delivery Statistics")
-            st.write(f"Total Packages: {statistics['total_packages']}")
-            st.write(f"Total Value: ${statistics['total_value']:.2f}")
-            st.write(f"Total Distance: {statistics['total_distance']:.2f}")
-            st.write(f"Average Packages per Trip: {statistics['average_packages_per_trip']:.2f}")
-            st.write(f"Average Value per Trip: ${statistics['average_value_per_trip']:.2f}")
-            st.write(f"Average Distance per Trip: {statistics['average_distance_per_trip']:.2f}")
+            st.markdown("### Delivery Statistics")
+            display_metrics(statistics)
             
             # Show statistics visualizations
-            st.subheader("Delivery Statistics Visualization")
+            st.markdown("### Delivery Statistics Visualization")
             plot_delivery_statistics(statistics)
             
+            # Create and offer download of delivery plans
+            delivery_data = []
+            for plan in st.session_state.delivery_plans:
+                for package in plan['packages']:
+                    delivery_data.append({
+                        'Drone ID': plan['drone_id'],
+                        'Package ID': package.id,
+                        'Weight': package.weight,
+                        'Value': package.value,
+                        'Destination': package.destination,
+                        'Route': ' → '.join(plan['route']),
+                        'Total Distance': plan['total_distance'],
+                        'Total Value': plan['total_value']
+                    })
+            
+            delivery_df = pd.DataFrame(delivery_data)
+            st.markdown(get_table_download_link(delivery_df, 'delivery_plans.csv'), unsafe_allow_html=True)
+            
         except Exception as e:
-            st.error(f"Error planning deliveries: {str(e)}")
+            st.markdown(f"""
+                <div class="error-box">
+                    Error planning deliveries: {str(e)}
+                </div>
+            """, unsafe_allow_html=True)
 
 def main():
-    st.title("Drone Delivery System")
+    st.title("🚁 Drone Delivery System")
     
     initialize_session_state()
     
     # Sidebar navigation
-    page = st.sidebar.selectbox(
-        "Navigation",
+    st.sidebar.image("https://img.icons8.com/color/96/000000/drone.png", width=100)
+    st.sidebar.markdown("### Navigation")
+    page = st.sidebar.radio(
+        "",
         ["Add City", "Add Route", "Manage Drones", "Manage Packages", "Plan Deliveries"]
     )
+    
+    # Add download button for evaluation file
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Test Evaluation")
+    evaluation_df = pd.read_csv("test_evaluation.xlsx")
+    st.sidebar.markdown(get_table_download_link(evaluation_df, 'test_evaluation.csv'), unsafe_allow_html=True)
     
     if page == "Add City":
         add_city()
