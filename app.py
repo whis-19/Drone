@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from models.package import Package
 from models.drone import Drone
 from delivery_planner import DeliveryPlanner
@@ -14,6 +16,100 @@ def initialize_session_state():
         st.session_state.packages = []
     if 'delivery_plans' not in st.session_state:
         st.session_state.delivery_plans = []
+
+def plot_delivery_statistics(statistics):
+    """Create plots for delivery statistics."""
+    # Create a bar chart for key metrics
+    metrics = {
+        'Total Packages': statistics['total_packages'],
+        'Total Value ($)': statistics['total_value'],
+        'Total Distance': statistics['total_distance']
+    }
+    
+    fig = px.bar(
+        x=list(metrics.keys()),
+        y=list(metrics.values()),
+        title='Delivery Overview',
+        labels={'x': 'Metric', 'y': 'Value'},
+        color=list(metrics.values()),
+        color_continuous_scale='Viridis'
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Create a pie chart for average metrics
+    avg_metrics = {
+        'Packages per Trip': statistics['average_packages_per_trip'],
+        'Value per Trip ($)': statistics['average_value_per_trip'],
+        'Distance per Trip': statistics['average_distance_per_trip']
+    }
+    
+    fig2 = px.pie(
+        values=list(avg_metrics.values()),
+        names=list(avg_metrics.keys()),
+        title='Average Metrics per Trip'
+    )
+    st.plotly_chart(fig2, use_container_width=True)
+
+def plot_package_distribution(packages):
+    """Create plots for package distribution."""
+    # Create a scatter plot of package weight vs value
+    fig = px.scatter(
+        packages,
+        x='Weight',
+        y='Value',
+        color='Destination',
+        size='Weight',
+        title='Package Weight vs Value Distribution',
+        labels={'Weight': 'Weight (kg)', 'Value': 'Value ($)'}
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Create a bar chart of packages by destination
+    dest_counts = pd.DataFrame(packages)['Destination'].value_counts()
+    fig2 = px.bar(
+        x=dest_counts.index,
+        y=dest_counts.values,
+        title='Packages by Destination',
+        labels={'x': 'Destination', 'y': 'Number of Packages'}
+    )
+    st.plotly_chart(fig2, use_container_width=True)
+
+def plot_route_network(planner):
+    """Create a network graph of the delivery routes."""
+    # Create nodes and edges for the network
+    nodes = list(planner.cities.keys())
+    edges = []
+    for city1 in planner.cities:
+        for city2, route in planner.cities[city1].connections.items():
+            if route.is_active:
+                edges.append((city1, city2, route.distance))
+    
+    # Create the network graph
+    fig = go.Figure()
+    
+    # Add edges
+    for edge in edges:
+        fig.add_trace(go.Scatter(
+            x=[nodes.index(edge[0]), nodes.index(edge[1])],
+            y=[0, 0],  # Simple layout for now
+            mode='lines+markers+text',
+            line=dict(width=edge[2]/5),  # Line width based on distance
+            marker=dict(size=10),
+            text=[edge[0], edge[1]],
+            textposition="top center",
+            name=f"{edge[0]}-{edge[1]}"
+        ))
+    
+    fig.update_layout(
+        title='Delivery Network',
+        showlegend=False,
+        hovermode='closest',
+        margin=dict(b=20,l=5,r=5,t=40),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
 
 def add_city():
     """Add a new city to the delivery network."""
@@ -30,6 +126,11 @@ def add_city():
             st.success(f"City {city_name} added successfully!")
         else:
             st.error("Please enter a city name")
+    
+    # Show network visualization
+    if len(st.session_state.planner.cities) > 0:
+        st.subheader("Current Network")
+        plot_route_network(st.session_state.planner)
 
 def add_route():
     """Add a new route between cities."""
@@ -50,6 +151,11 @@ def add_route():
             st.success(f"Route from {city1} to {city2} added successfully!")
         else:
             st.error("Please select different cities")
+    
+    # Show network visualization
+    if len(st.session_state.planner.cities) > 0:
+        st.subheader("Current Network")
+        plot_route_network(st.session_state.planner)
 
 def manage_drones():
     """Add and manage drones."""
@@ -84,6 +190,18 @@ def manage_drones():
             for drone in st.session_state.drones
         ])
         st.dataframe(drones_df)
+        
+        # Create drone capability visualization
+        fig = px.scatter(
+            drones_df,
+            x='Max Weight',
+            y='Max Distance',
+            size='Max Weight',
+            color='ID',
+            title='Drone Capabilities',
+            labels={'Max Weight': 'Max Weight (kg)', 'Max Distance': 'Max Distance (km)'}
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 def manage_packages():
     """Add and manage packages."""
@@ -121,6 +239,10 @@ def manage_packages():
             for package in st.session_state.packages
         ])
         st.dataframe(packages_df)
+        
+        # Show package distribution plots
+        st.subheader("Package Distribution")
+        plot_package_distribution(packages_df)
 
 def plan_deliveries():
     """Plan and display delivery routes."""
@@ -162,6 +284,10 @@ def plan_deliveries():
             st.write(f"Average Packages per Trip: {statistics['average_packages_per_trip']:.2f}")
             st.write(f"Average Value per Trip: ${statistics['average_value_per_trip']:.2f}")
             st.write(f"Average Distance per Trip: {statistics['average_distance_per_trip']:.2f}")
+            
+            # Show statistics visualizations
+            st.subheader("Delivery Statistics Visualization")
+            plot_delivery_statistics(statistics)
             
         except Exception as e:
             st.error(f"Error planning deliveries: {str(e)}")
